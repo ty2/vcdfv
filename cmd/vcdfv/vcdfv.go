@@ -41,8 +41,8 @@ func main() {
 }
 
 func argsToOperation(args []string) vcdfv.Operation {
-	if len(args) <= 0 {
-		err := errors.New("args len > 0")
+	if len(args) <= 1 {
+		err := errors.New("args len <= 1")
 		return &vcdfv.OperationStatusFailure{
 			Error: err,
 		}
