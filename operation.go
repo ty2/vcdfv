@@ -15,20 +15,6 @@ type Operation interface {
 	Exec() (*OperationExecResult, error)
 }
 
-/*
-{
-	"status": "<Success/Failure/Not supported>",
-	"message": "<Reason for success/failure>",
-	"device": "<Path to the device attached. This field is valid only for attach & waitforattach call-outs>"
-	"volumeName": "<Cluster wide unique name of the volume. Valid only for getvolumename call-out>"
-	"attached": <True/False (Return true if volume is attached on the node. Valid only for isattached call-out)>
-    "capabilities": <Only included as part of the Init response>
-    {
-        "attach": <True/False (Return true if the driver implements attach and detach)>
-    }
-}
-*/
-
 const (
 	OperationExecResultStatusSuccess      = "Success"
 	OperationExecResultStatusFailure      = "Failure"
@@ -257,54 +243,6 @@ func (operationMount *OperationMount) Exec() (*OperationExecResult, error) {
 	return &OperationExecResult{
 		Status:  OperationExecResultStatusSuccess,
 		Message: string(message),
-	}, nil
-}
-
-type OperationUnmountA struct {
-	Operation
-	MountDir  string
-	Options   *OperationOptions
-	VcdConfig *OperationVcdConfig
-}
-
-func (operationUnmountA *OperationUnmountA) Exec() (*OperationExecResult, error) {
-	// init vdc
-	vdc, err := NewVdc(&VcdConfig{
-		ApiEndpoint: operationUnmountA.VcdConfig.ApiEndpoint,
-		Insecure:    operationUnmountA.VcdConfig.Insecure,
-		User:        operationUnmountA.VcdConfig.User,
-		Password:    operationUnmountA.VcdConfig.Password,
-		Org:         operationUnmountA.VcdConfig.Org,
-		Vdc:         operationUnmountA.VcdConfig.Vdc,
-	})
-	if err != nil {
-		return (&OperationStatusFailure{Error: err}).Exec()
-	}
-
-	var diskForUnmount *VdcDisk
-	// Find exists disk
-	foundDisk, err := vdc.FindDiskByDiskName(operationUnmountA.Options.PvOrVolumeName)
-	if err != nil {
-		return (&OperationStatusFailure{Error: err}).Exec()
-	} else {
-		diskForUnmount = foundDisk
-	}
-
-	// find this VM is VDC
-	vm, err := FindVm(vdc, operationUnmountA.VcdConfig.VdcVApp)
-	if err != nil {
-		return (&OperationStatusFailure{Error: err}).Exec()
-	}
-
-	// detach disk in vdc
-	err = vdc.DetachDisk(vm, diskForUnmount)
-	if err != nil {
-		return (&OperationStatusFailure{Error: err}).Exec()
-	}
-
-	return &OperationExecResult{
-		Status:  OperationExecResultStatusSuccess,
-		Message: "OK",
 	}, nil
 }
 

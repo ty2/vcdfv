@@ -147,20 +147,3 @@ func argsToUnMountOperation(args []string) vcdfv.Operation {
 		VcdConfig: vcdfvConfig,
 	}
 }
-
-func argsToUnMountAOperation(args []string) vcdfv.Operation {
-	if l := len(args); l < 3 {
-		err := errors.New(fmt.Sprintf("args len < 3, got len: %v", l))
-		return &vcdfv.OperationStatusFailure{
-			Error: err,
-		}
-	}
-
-	option := &vcdfv.OperationOptions{}
-
-	return &vcdfv.OperationUnmountA{
-		MountDir:  args[2],
-		Options:   option,
-		VcdConfig: vcdfvConfig,
-	}
-}
