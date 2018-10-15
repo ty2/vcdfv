@@ -72,10 +72,9 @@ func argsToOperation(args []string) vcdfv.Operation {
 
 	operation := args[1]
 	validOperations := map[string]func(args []string) vcdfv.Operation{
-		opInit:     argsToInitOperation,
-		opMount:    argsToMountOperation,
-		opUnmount:  argsToUnMountOperation,
-		opUnmountA: argsToUnMountAOperation,
+		opInit:    argsToInitOperation,
+		opMount:   argsToMountOperation,
+		opUnmount: argsToUnMountOperation,
 	}
 
 	// check valid operation
