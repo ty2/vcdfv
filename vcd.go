@@ -16,7 +16,7 @@ type VcdConfig struct {
 	User        string
 	Password    string
 	Org         string
-	VDC         string
+	Vdc         string
 }
 
 type VdcVApp struct {
@@ -73,7 +73,7 @@ func NewVdc(config *VcdConfig) (*Vdc, error) {
 	}
 
 	// Get VDC client
-	vdcClient, err := org.GetVdcByName(config.VDC)
+	vdcClient, err := org.GetVdcByName(config.Vdc)
 	if err != nil {
 		return nil, err
 	}

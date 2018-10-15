@@ -4,8 +4,8 @@ package vcdfv
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/go-siris/siris/core/errors"
 	"github.com/ty2/vcdfv/vmdiskop"
 	"strings"
 	"time"
@@ -35,6 +35,16 @@ const (
 	OperationExecResultStatusNotSupported = "Not supported"
 )
 
+type OperationVcdConfig struct {
+	ApiEndpoint string `yaml:"apiEndpoint"`
+	Insecure    bool   `yaml:"insecure"`
+	User        string `yaml:"user"`
+	Password    string `yaml:"password"`
+	Org         string `yaml:"org"`
+	Vdc         string `yaml:"vdc"`
+	VdcVApp     string `yaml:"vdcVApp"`
+}
+
 type OperationExecResult struct {
 	Status       string                     `json:"status"`
 	Message      string                     `json:"message"`
@@ -50,14 +60,6 @@ type OperationOptions struct {
 	Readwrite      string `json:"kubernetes.io/readwrite"`
 	FsGroup        string `json:"kubernetes.io/fsGroup"`
 	PvOrVolumeName string `json:"kubernetes.io/pvOrVolumeName"`
-	// VCD Options
-	VcdApiEndpoint string `json:"kubernetes.io/secret/vcdApiEndpoint"`
-	VcdInsecure    bool   `json:"kubernetes.io/secret/vcdInsecure"`
-	VcdUser        string `json:"kubernetes.io/secret/vcdUser"`
-	VcdPassword    string `json:"kubernetes.io/secret/vcdPassword"`
-	VcdOrg         string `json:"kubernetes.io/secret/vcdOrg"`
-	VcdVdc         string `json:"kubernetes.io/secret/vcdVdc"`
-	VcdVdcVApp     string `json:"kubernetes.io/secret/vcdVdcVApp"`
 	// Addition Options
 	DiskInitialSize string `json:"diskInitialSize"`
 }
@@ -78,8 +80,9 @@ func (operationInit *OperationInit) Exec() (*OperationExecResult, error) {
 
 type OperationMount struct {
 	Operation
-	MountDir string
-	Options  *OperationOptions
+	MountDir  string
+	Options   *OperationOptions
+	VcdConfig *OperationVcdConfig
 }
 
 func (operationMount *OperationMount) Exec() (*OperationExecResult, error) {
@@ -102,19 +105,19 @@ func (operationMount *OperationMount) Exec() (*OperationExecResult, error) {
 
 	// init VDC
 	vdc, err := NewVdc(&VcdConfig{
-		ApiEndpoint: operationMount.Options.VcdApiEndpoint,
-		Insecure:    operationMount.Options.VcdInsecure,
-		User:        operationMount.Options.VcdUser,
-		Password:    operationMount.Options.VcdPassword,
-		Org:         operationMount.Options.VcdOrg,
-		VDC:         operationMount.Options.VcdVdc,
+		ApiEndpoint: operationMount.VcdConfig.ApiEndpoint,
+		Insecure:    operationMount.VcdConfig.Insecure,
+		User:        operationMount.VcdConfig.User,
+		Password:    operationMount.VcdConfig.Password,
+		Org:         operationMount.VcdConfig.Org,
+		Vdc:         operationMount.VcdConfig.Vdc,
 	})
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	}
 
 	// find this VM in VDC
-	vm, err := FindVm(vdc, operationMount.Options.VcdVdcVApp)
+	vm, err := FindVm(vdc, operationMount.VcdConfig.VdcVApp)
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	}
@@ -153,7 +156,7 @@ func (operationMount *OperationMount) Exec() (*OperationExecResult, error) {
 
 		// find new disk to get new disk id
 		diskForMount, err = vdc.FindDiskByDiskName(operationMount.Options.PvOrVolumeName)
-		fmt.Println("err", err, diskForMount)
+
 		if err != nil {
 			return (&OperationStatusFailure{Error: err}).Exec()
 		}
@@ -259,19 +262,20 @@ func (operationMount *OperationMount) Exec() (*OperationExecResult, error) {
 
 type OperationUnmountA struct {
 	Operation
-	MountDir string
-	Options  *OperationOptions
+	MountDir  string
+	Options   *OperationOptions
+	VcdConfig *OperationVcdConfig
 }
 
 func (operationUnmountA *OperationUnmountA) Exec() (*OperationExecResult, error) {
 	// init vdc
 	vdc, err := NewVdc(&VcdConfig{
-		ApiEndpoint: operationUnmountA.Options.VcdApiEndpoint,
-		Insecure:    operationUnmountA.Options.VcdInsecure,
-		User:        operationUnmountA.Options.VcdUser,
-		Password:    operationUnmountA.Options.VcdPassword,
-		Org:         operationUnmountA.Options.VcdOrg,
-		VDC:         operationUnmountA.Options.VcdVdc,
+		ApiEndpoint: operationUnmountA.VcdConfig.ApiEndpoint,
+		Insecure:    operationUnmountA.VcdConfig.Insecure,
+		User:        operationUnmountA.VcdConfig.User,
+		Password:    operationUnmountA.VcdConfig.Password,
+		Org:         operationUnmountA.VcdConfig.Org,
+		Vdc:         operationUnmountA.VcdConfig.Vdc,
 	})
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
@@ -287,7 +291,7 @@ func (operationUnmountA *OperationUnmountA) Exec() (*OperationExecResult, error)
 	}
 
 	// find this VM is VDC
-	vm, err := FindVm(vdc, operationUnmountA.Options.VcdVdcVApp)
+	vm, err := FindVm(vdc, operationUnmountA.VcdConfig.VdcVApp)
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	}
@@ -306,8 +310,8 @@ func (operationUnmountA *OperationUnmountA) Exec() (*OperationExecResult, error)
 
 type OperationUnmount struct {
 	Operation
-	MountDir string
-	Options  *OperationOptions
+	MountDir  string
+	VcdConfig *OperationVcdConfig
 }
 
 func (operationUnmount *OperationUnmount) Exec() (*OperationExecResult, error) {
@@ -318,24 +322,23 @@ func (operationUnmount *OperationUnmount) Exec() (*OperationExecResult, error) {
 
 	// init vdc
 	vdc, err := NewVdc(&VcdConfig{
-		ApiEndpoint: operationUnmount.Options.VcdApiEndpoint,
-		Insecure:    operationUnmount.Options.VcdInsecure,
-		User:        operationUnmount.Options.VcdUser,
-		Password:    operationUnmount.Options.VcdPassword,
-		Org:         operationUnmount.Options.VcdOrg,
-		VDC:         operationUnmount.Options.VcdVdc,
+		ApiEndpoint: operationUnmount.VcdConfig.ApiEndpoint,
+		Insecure:    operationUnmount.VcdConfig.Insecure,
+		User:        operationUnmount.VcdConfig.User,
+		Password:    operationUnmount.VcdConfig.Password,
+		Org:         operationUnmount.VcdConfig.Org,
+		Vdc:         operationUnmount.VcdConfig.Vdc,
 	})
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	}
 
 	// find this VM is VDC
-	vm, err := FindVm(vdc, operationUnmount.Options.VcdVdcVApp)
+	vm, err := FindVm(vdc, operationUnmount.VcdConfig.VdcVApp)
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	}
 
-	fmt.Println(operationUnmount.MountDir)
 	blockDevice, err := vmdiskop.FindDeviceByMountPoint(operationUnmount.MountDir)
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
@@ -343,7 +346,7 @@ func (operationUnmount *OperationUnmount) Exec() (*OperationExecResult, error) {
 
 	var diskForUnmount *VdcDisk
 	// Find exists disk
-	foundDisk, err := vdc.FindDiskByDiskName(operationUnmount.Options.PvOrVolumeName)
+	foundDisk, err := vdc.FindDiskByDiskName(blockDevice.Label)
 	if err != nil {
 		return (&OperationStatusFailure{Error: err}).Exec()
 	} else {

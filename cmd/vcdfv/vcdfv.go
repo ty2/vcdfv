@@ -4,9 +4,11 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"github.com/go-siris/siris/core/errors"
 	"github.com/ty2/vcdfv"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
 	"log"
 	"os"
 	"strings"
@@ -14,6 +16,26 @@ import (
 
 // FlexVolume Spec
 // https://github.com/kubernetes/community/blob/f60e9ca9f800236e412104843e3a3ded908904c9/contributors/devel/flexvolume.md
+
+var vcdfvConfig *vcdfv.OperationVcdConfig
+
+func init() {
+	fileBytes, err := ioutil.ReadFile("/etc/kubernetes/vcdfv-config.yaml")
+	if err != nil {
+		output, _ := (&vcdfv.OperationStatusFailure{
+			Error: err,
+		}).Exec()
+		log.Fatal(output)
+	}
+
+	err = yaml.Unmarshal([]byte(fileBytes), &vcdfvConfig)
+	if err != nil {
+		output, _ := (&vcdfv.OperationStatusFailure{
+			Error: err,
+		}).Exec()
+		log.Fatal(output)
+	}
+}
 
 func main() {
 	args := os.Args
@@ -37,7 +59,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	fmt.Println("should not run this one")
+	fmt.Println("should not run this line")
 }
 
 func argsToOperation(args []string) vcdfv.Operation {
@@ -106,8 +128,9 @@ func argsToMountOperation(args []string) vcdfv.Operation {
 	}
 
 	return &vcdfv.OperationMount{
-		MountDir: args[2],
-		Options:  option,
+		MountDir:  args[2],
+		Options:   option,
+		VcdConfig: vcdfvConfig,
 	}
 }
 
@@ -119,15 +142,9 @@ func argsToUnMountOperation(args []string) vcdfv.Operation {
 		}
 	}
 
-	option := &vcdfv.OperationOptions{}
-	err := json.Unmarshal([]byte(args[3]), option)
-	if err != nil {
-		return nil
-	}
-
 	return &vcdfv.OperationUnmount{
-		MountDir: args[2],
-		Options:  option,
+		MountDir:  args[2],
+		VcdConfig: vcdfvConfig,
 	}
 }
 
@@ -140,13 +157,10 @@ func argsToUnMountAOperation(args []string) vcdfv.Operation {
 	}
 
 	option := &vcdfv.OperationOptions{}
-	err := json.Unmarshal([]byte(args[3]), option)
-	if err != nil {
-		return nil
-	}
 
 	return &vcdfv.OperationUnmountA{
-		MountDir: args[2],
-		Options:  option,
+		MountDir:  args[2],
+		Options:   option,
+		VcdConfig: vcdfvConfig,
 	}
 }

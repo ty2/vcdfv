@@ -1,3 +1,5 @@
+//+build linux
+
 package vmdiskop
 
 import (
@@ -72,9 +74,6 @@ func ScanScsiHost() error {
 			return err
 		}
 	}
-
-	// wait for scan complete
-	time.Sleep(time.Second * 3)
 
 	return nil
 }

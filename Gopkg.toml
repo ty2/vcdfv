@@ -33,3 +33,7 @@
   name = "github.com/vmware/go-vcloud-director"
   revision = "be956699918497cfde7af773ccc14e5cec0bf268"
   source = "github.com/ty2/go-vcloud-director"
+
+[[constraint]]
+  name = "gopkg.in/yaml.v2"
+  version = "2.2.1"

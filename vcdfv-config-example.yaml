@@ -1,0 +1,7 @@
+apiEndpoint: ""
+insecure: false
+user: ""
+password: ""
+org: ""
+vdc: ""
+vdcVApp: ""

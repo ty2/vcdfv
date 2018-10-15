@@ -2,6 +2,22 @@
 
 
 [[projects]]
+  digest = "1:65ab4f1f8c0e5398fe0fff5fa6faa12640a7bb544bde08c5494a0e9899712635"
+  name = "github.com/go-siris/siris"
+  packages = ["core/errors"]
+  pruneopts = "UT"
+  revision = "d6bc3df4b216199bec985043ca6c3e5c00232fd5"
+  version = "v7.4.0"
+
+[[projects]]
+  branch = "master"
+  digest = "1:ff6b0586c0621a76832cf783eee58cbb9d9795d2ce8acbc199a4131db11c42a9"
+  name = "github.com/satori/go.uuid"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
+
+[[projects]]
   digest = "1:bd47d12b119e2b627c5c0c30b13df7c26f388e7ef7453330b6cb80d30aee8414"
   name = "github.com/vmware/go-vcloud-director"
   packages = [
@@ -13,9 +29,22 @@
   revision = "be956699918497cfde7af773ccc14e5cec0bf268"
   source = "github.com/ty2/go-vcloud-director"
 
+[[projects]]
+  digest = "1:342378ac4dcb378a5448dd723f0784ae519383532f5e70ade24132c4c8693202"
+  name = "gopkg.in/yaml.v2"
+  packages = ["."]
+  pruneopts = "UT"
+  revision = "5420a8b6744d3b0345ab293f6fcba19c978f1183"
+  version = "v2.2.1"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  input-imports = ["github.com/vmware/go-vcloud-director/govcd"]
+  input-imports = [
+    "github.com/go-siris/siris/core/errors",
+    "github.com/vmware/go-vcloud-director/govcd",
+    "github.com/vmware/go-vcloud-director/types/v56",
+    "gopkg.in/yaml.v2",
+  ]
   solver-name = "gps-cdcl"
   solver-version = 1
