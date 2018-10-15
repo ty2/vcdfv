@@ -94,7 +94,7 @@ func IsFormatted(blockDevice *BlockDevice) bool {
 		return false
 	}
 
-	return false
+	return true
 }
 
 func BlockDevices() ([]*BlockDevice, error) {
