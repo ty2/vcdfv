@@ -44,13 +44,13 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 		Vdc:         operationMount.VcdConfig.VcdVdc,
 	})
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("new vdc: " + err.Error())}).Exec()
 	}
 
 	// find this VM in VDC
 	vm, err := FindVm(vdc, operationMount.VcdConfig.VcdVdcVApp)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("find VM: " + err.Error())}).Exec()
 	}
 
 	var diskForMount *vcd.VdcDisk
@@ -58,14 +58,14 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 	foundDisk, err := vdc.FindDiskByDiskName(operationMount.Options.PvOrVolumeName)
 	if err != nil {
 		if err.Error() != "not found" {
-			return (&StatusFailure{Error: err}).Exec()
+			return (&StatusFailure{Error: errors.New("find disk by disk name foundDisk: " + err.Error())}).Exec()
 		}
 	} else if foundDisk != nil {
 		if foundDisk.AttachedVm != nil {
 			// try to detach disk
 			vm, err := FindVm(vdc, operationMount.VcdConfig.VcdVdcVApp)
 			if err != nil {
-				return (&StatusFailure{Error: err}).Exec()
+				return (&StatusFailure{Error: errors.New("find VM foundDisk: " + err.Error())}).Exec()
 			}
 
 			if vm.Name == foundDisk.AttachedVm.Name {
@@ -86,7 +86,7 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 	if diskForMount == nil {
 		size, err := SizeStringToByteUnit(operationMount.Options.DiskInitialSize)
 		if err != nil {
-			return (&StatusFailure{Error: err}).Exec()
+			return (&StatusFailure{Error: errors.New("size string to byte unit: " + err.Error())}).Exec()
 		}
 
 		diskForMount, err = vdc.CreateDisk(&vcd.VdcDisk{
@@ -95,21 +95,20 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 		})
 
 		if err != nil {
-			return (&StatusFailure{Error: err}).Exec()
+			return (&StatusFailure{Error: errors.New("create disk: " + err.Error())}).Exec()
 		}
 
 		// find new disk to get new disk id
 		diskForMount, err = vdc.FindDiskByDiskName(operationMount.Options.PvOrVolumeName)
-
 		if err != nil {
-			return (&StatusFailure{Error: err}).Exec()
+			return (&StatusFailure{Error: errors.New("find disk by disk name diskForMount: " + err.Error())}).Exec()
 		}
 	}
 
 	// get block devices info for compare later
 	beforeBlockDevices, err := vmdiskop.BlockDevices()
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("before block devices: " + err.Error())}).Exec()
 	}
 
 	// check disk is mounted
@@ -121,16 +120,15 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 	}
 
 	// attach disk
-	if diskForMount.AttachedVm == nil {
-		err = vdc.AttachDisk(vm, diskForMount)
-		if err != nil {
-			return (&StatusFailure{Error: err}).Exec()
-		}
+	err = vdc.AttachDisk(vm, diskForMount)
+	if err != nil {
+		return (&StatusFailure{Error: errors.New("attach disk: " + err.Error())}).Exec()
 	}
 
+	time.Sleep(time.Second * 3)
 	blockDevices, err := vmdiskop.BlockDevices()
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("list block devices: " + err.Error())}).Exec()
 	}
 
 	// get all before block device names for compare
@@ -154,7 +152,6 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 
 	// fail to mount
 	if mountedBlockDevice == nil {
-		err := errors.New("no new new device is found")
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
@@ -172,15 +169,14 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 		// format disk
 		err := vmdiskop.FormatDeviceToExt4(mountedBlockDevice, operationMount.Options.PvOrVolumeName, uuid, time.Minute)
 		if err != nil {
-			return (&StatusFailure{Error: err}).Exec()
+			return (&StatusFailure{Error: errors.New("format device to ext4: " + err.Error())}).Exec()
 		}
 	}
 
 	// mount disk
 	err = vmdiskop.Mount(mountedBlockDevice, operationMount.MountDir, operationMount.Options.FsType, operationMount.Options.Readwrite)
 	if err != nil {
-		err := errors.New("no new new device is found")
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("mount: " + err.Error())}).Exec()
 	}
 
 	// output

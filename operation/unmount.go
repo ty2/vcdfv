@@ -28,25 +28,25 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 		Vdc:         operationUnmount.VcdConfig.VcdVdc,
 	})
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("new vdc: " + err.Error())}).Exec()
 	}
 
 	// find this VM is VDC
 	vm, err := FindVm(vdc, operationUnmount.VcdConfig.VcdVdcVApp)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("find VM: " + err.Error())}).Exec()
 	}
 
 	blockDevice, err := vmdiskop.FindDeviceByMountPoint(operationUnmount.MountDir)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("find device by mount point: " + err.Error())}).Exec()
 	}
 
 	var diskForUnmount *vcd.VdcDisk
 	// Find exists disk
 	foundDisk, err := vdc.FindDiskByDiskName(blockDevice.Label)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("Find disk by disk name: " + err.Error())}).Exec()
 	} else {
 		diskForUnmount = foundDisk
 	}
@@ -54,19 +54,19 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 	// unmount
 	err = vmdiskop.Unmount(operationUnmount.MountDir)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("unmount: " + err.Error())}).Exec()
 	}
 
 	// remove scsi device
 	err = vmdiskop.RemoveSCSIDevice(blockDevice)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("remove SCSI device: " + err.Error())}).Exec()
 	}
 
 	// detach disk in vdc
 	err = vdc.DetachDisk(vm, diskForUnmount)
 	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
+		return (&StatusFailure{Error: errors.New("detach disk: " + err.Error())}).Exec()
 	}
 
 	// output
