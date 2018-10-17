@@ -1,7 +1,7 @@
-apiEndpoint: ""
-insecure: false
-user: ""
-password: ""
-org: ""
-vdc: ""
-vdcVApp: ""
+vcdApiEndpoint: ""
+vcdInsecure: false
+vcdUser: ""
+vcdPassword: ""
+vcdOrg: ""
+vcdVdc: ""
+vcdVdcVApp: ""

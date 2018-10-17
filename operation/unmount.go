@@ -1,15 +1,15 @@
 package operation
 
 import (
-	"encoding/json"
 	"errors"
+	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/vcd"
 	"github.com/ty2/vcdfv/vmdiskop"
 )
 
 type Unmount struct {
 	MountDir  string
-	VcdConfig *VcdConfig
+	VcdConfig *config.Vcdfv
 }
 
 func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
@@ -20,19 +20,19 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 
 	// init vdc
 	vdc, err := vcd.NewVdc(&vcd.VcdConfig{
-		ApiEndpoint: operationUnmount.VcdConfig.ApiEndpoint,
-		Insecure:    operationUnmount.VcdConfig.Insecure,
-		User:        operationUnmount.VcdConfig.User,
-		Password:    operationUnmount.VcdConfig.Password,
-		Org:         operationUnmount.VcdConfig.Org,
-		Vdc:         operationUnmount.VcdConfig.Vdc,
+		ApiEndpoint: operationUnmount.VcdConfig.VcdApiEndpoint,
+		Insecure:    operationUnmount.VcdConfig.VcdInsecure,
+		User:        operationUnmount.VcdConfig.VcdUser,
+		Password:    operationUnmount.VcdConfig.VcdPassword,
+		Org:         operationUnmount.VcdConfig.VcdOrg,
+		Vdc:         operationUnmount.VcdConfig.VcdVdc,
 	})
 	if err != nil {
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
 	// find this VM is VDC
-	vm, err := FindVm(vdc, operationUnmount.VcdConfig.VdcVApp)
+	vm, err := FindVm(vdc, operationUnmount.VcdConfig.VcdVdcVApp)
 	if err != nil {
 		return (&StatusFailure{Error: err}).Exec()
 	}
@@ -70,7 +70,7 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 	}
 
 	// output
-	message, err := json.Marshal(struct {
+	return (&StatusSuccess{JsonMessageStruct: struct {
 		DiskId       string `json:"diskId"`
 		DiskName     string `json:"diskName"`
 		VmDeviceName string `json:"vmDeviceName"`
@@ -80,12 +80,5 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 		DiskName:     foundDisk.Name,
 		VmDeviceName: blockDevice.Name,
 		MountPoint:   blockDevice.MountPoint,
-	})
-	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
-	}
-	return &ExecResult{
-		Status:  ExecResultStatusSuccess,
-		Message: string(message),
-	}, nil
+	}}).Exec()
 }

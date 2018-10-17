@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/nightlyone/lockfile"
+	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/operation"
 	"gopkg.in/yaml.v2"
 	"io/ioutil"
@@ -20,7 +21,7 @@ import (
 // FlexVolume Spec
 // https://github.com/kubernetes/community/blob/f60e9ca9f800236e412104843e3a3ded908904c9/contributors/devel/flexvolume.md
 
-var vcdfvConfig *operation.VcdConfig
+var vcdfvConfig *config.Vcdfv
 
 func init() {
 	fileBytes, err := ioutil.ReadFile("/etc/kubernetes/vcdfv-config.yaml")

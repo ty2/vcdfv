@@ -12,16 +12,6 @@ const (
 	ExecResultStatusNotSupported = "Not supported"
 )
 
-type VcdConfig struct {
-	ApiEndpoint string `yaml:"apiEndpoint"`
-	Insecure    bool   `yaml:"insecure"`
-	User        string `yaml:"user"`
-	Password    string `yaml:"password"`
-	Org         string `yaml:"org"`
-	Vdc         string `yaml:"vdc"`
-	VdcVApp     string `yaml:"vdcVApp"`
-}
-
 type ExecResult struct {
 	Status       string            `json:"status"`
 	Message      string            `json:"message"`

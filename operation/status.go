@@ -33,3 +33,20 @@ func (operationStatusFailure *StatusFailure) Exec() (*ExecResult, error) {
 		Message: outputMessage,
 	}, operationStatusFailure.Error
 }
+
+type StatusSuccess struct {
+	JsonMessageStruct interface{}
+}
+
+func (statusSuccess *StatusSuccess) Exec() (*ExecResult, error) {
+	message, err := json.Marshal(statusSuccess.JsonMessageStruct)
+
+	if err != nil {
+		return (&StatusFailure{Error: err}).Exec()
+	}
+
+	return &ExecResult{
+		Status:  ExecResultStatusSuccess,
+		Message: string(message),
+	}, nil
+}

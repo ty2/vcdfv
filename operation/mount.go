@@ -1,9 +1,9 @@
 package operation
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/vcd"
 	"github.com/ty2/vcdfv/vmdiskop"
 	"strings"
@@ -13,7 +13,7 @@ import (
 type Mount struct {
 	MountDir  string
 	Options   *Options
-	VcdConfig *VcdConfig
+	VcdConfig *config.Vcdfv
 }
 
 func (operationMount *Mount) Exec() (*ExecResult, error) {
@@ -36,19 +36,19 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 
 	// init VDC
 	vdc, err := vcd.NewVdc(&vcd.VcdConfig{
-		ApiEndpoint: operationMount.VcdConfig.ApiEndpoint,
-		Insecure:    operationMount.VcdConfig.Insecure,
-		User:        operationMount.VcdConfig.User,
-		Password:    operationMount.VcdConfig.Password,
-		Org:         operationMount.VcdConfig.Org,
-		Vdc:         operationMount.VcdConfig.Vdc,
+		ApiEndpoint: operationMount.VcdConfig.VcdApiEndpoint,
+		Insecure:    operationMount.VcdConfig.VcdInsecure,
+		User:        operationMount.VcdConfig.VcdUser,
+		Password:    operationMount.VcdConfig.VcdPassword,
+		Org:         operationMount.VcdConfig.VcdOrg,
+		Vdc:         operationMount.VcdConfig.VcdVdc,
 	})
 	if err != nil {
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
 	// find this VM in VDC
-	vm, err := FindVm(vdc, operationMount.VcdConfig.VdcVApp)
+	vm, err := FindVm(vdc, operationMount.VcdConfig.VcdVdcVApp)
 	if err != nil {
 		return (&StatusFailure{Error: err}).Exec()
 	}
@@ -63,13 +63,18 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 	} else if foundDisk != nil {
 		if foundDisk.AttachedVm != nil {
 			// try to detach disk
-			vm, err := FindVm(vdc, operationMount.VcdConfig.VdcVApp)
+			vm, err := FindVm(vdc, operationMount.VcdConfig.VcdVdcVApp)
 			if err != nil {
 				return (&StatusFailure{Error: err}).Exec()
 			}
+
+			if vm.Name == foundDisk.AttachedVm.Name {
+				// TODO Detach disk in VM
+			}
+
 			err = vdc.DetachDisk(vm, foundDisk)
-			err = errors.New(fmt.Sprintf("disk is attached to VM: %s and cannot detach disk %s from the VM", foundDisk.AttachedVm.Name, foundDisk.Name))
 			if err != nil {
+				err = errors.New(fmt.Sprintf("disk is attached to VM: %s and cannot detach disk %s from the VM", foundDisk.AttachedVm.Name, foundDisk.Name))
 				return (&StatusFailure{Error: err}).Exec()
 			}
 		}
@@ -179,7 +184,7 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 	}
 
 	// output
-	message, err := json.Marshal(struct {
+	return (&StatusSuccess{JsonMessageStruct: struct {
 		DiskId       string `json:"diskId"`
 		DiskName     string `json:"diskName"`
 		VmDeviceName string `json:"vmDeviceName"`
@@ -189,12 +194,5 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 		DiskName:     diskForMount.Name,
 		VmDeviceName: mountedBlockDevice.Name,
 		MountPoint:   operationMount.MountDir,
-	})
-	if err != nil {
-		return (&StatusFailure{Error: err}).Exec()
-	}
-	return &ExecResult{
-		Status:  ExecResultStatusSuccess,
-		Message: string(message),
-	}, nil
+	}}).Exec()
 }
