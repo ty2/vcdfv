@@ -4,10 +4,9 @@ package main
 
 // Operation
 const (
-	opMount    = "mount"
-	opUnmount  = "unmount"
-	opUnmountA = "unmounta"
-	opInit     = "init"
+	opMount   = "mount"
+	opUnmount = "unmount"
+	opInit    = "init"
 )
 
 // Error Predefine

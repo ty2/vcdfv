@@ -2,20 +2,12 @@
 
 
 [[projects]]
-  digest = "1:65ab4f1f8c0e5398fe0fff5fa6faa12640a7bb544bde08c5494a0e9899712635"
-  name = "github.com/go-siris/siris"
-  packages = ["core/errors"]
-  pruneopts = "UT"
-  revision = "d6bc3df4b216199bec985043ca6c3e5c00232fd5"
-  version = "v7.4.0"
-
-[[projects]]
   branch = "master"
-  digest = "1:ff6b0586c0621a76832cf783eee58cbb9d9795d2ce8acbc199a4131db11c42a9"
-  name = "github.com/satori/go.uuid"
+  digest = "1:6491080aa184f88c2bb8e2f6056e5e0e9a578b2d8666efbd6e97bc37a0c41e72"
+  name = "github.com/nightlyone/lockfile"
   packages = ["."]
   pruneopts = "UT"
-  revision = "36e9d2ebbde5e3f13ab2e25625fd453271d6522e"
+  revision = "0ad87eef1443f64d3d8c50da647e2b1552851124"
 
 [[projects]]
   digest = "1:bd47d12b119e2b627c5c0c30b13df7c26f388e7ef7453330b6cb80d30aee8414"
@@ -41,7 +33,7 @@
   analyzer-name = "dep"
   analyzer-version = 1
   input-imports = [
-    "github.com/go-siris/siris/core/errors",
+    "github.com/nightlyone/lockfile",
     "github.com/vmware/go-vcloud-director/govcd",
     "github.com/vmware/go-vcloud-director/types/v56",
     "gopkg.in/yaml.v2",

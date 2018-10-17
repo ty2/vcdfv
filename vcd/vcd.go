@@ -1,6 +1,6 @@
 // Created by terry on 11/10/2018.
 
-package vcdfv
+package vcd
 
 import (
 	"errors"

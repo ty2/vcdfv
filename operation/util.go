@@ -1,8 +1,9 @@
-package vcdfv
+package operation
 
 import (
 	"errors"
 	"fmt"
+	"github.com/ty2/vcdfv/vcd"
 	"os"
 	"strconv"
 )
@@ -31,7 +32,7 @@ func SizeStringToByteUnit(str string) (int, error) {
 	return int(size), nil
 }
 
-func FindVm(vdc *Vdc, vAppName string) (*VAppVm, error) {
+func FindVm(vdc *vcd.Vdc, vAppName string) (*vcd.VAppVm, error) {
 	// get hostname
 	hostname, err := os.Hostname()
 	if err != nil {

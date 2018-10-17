@@ -1,7 +1,7 @@
 // Created by terry on 11/10/2018.
 // TODO apply custom error to operations, vcd
 
-package vcdfv
+package main
 
 import "fmt"
 

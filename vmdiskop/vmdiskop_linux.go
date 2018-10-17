@@ -89,7 +89,7 @@ func RemoveSCSIDevice(blockDevice *BlockDevice) error {
 }
 
 func IsFormatted(blockDevice *BlockDevice) bool {
-	if blockDevice.FsType == "" && blockDevice.Children == nil {
+	if blockDevice.FsType == "" && len(blockDevice.Children) > 0 {
 		return false
 	}
 
