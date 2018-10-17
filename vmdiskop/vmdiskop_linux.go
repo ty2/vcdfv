@@ -6,7 +6,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"os"
 	"os/exec"
 	"syscall"
 	"time"
@@ -102,6 +104,17 @@ func BlockDevices() ([]*BlockDevice, error) {
 		return nil, err
 	}
 
+	// Note that lsblk might be executed in time when udev does not have all
+	// information about recently added or modified devices yet. In this
+	// case it is recommended to use udevadm settle before lsblk to
+	// synchronize with udev.
+	// http://man7.org/linux/man-pages/man8/lsblk.8.html
+	udevadm := exec.Command("udevadm", "settle")
+	err = udevadm.Run()
+	if err != nil {
+		return nil, err
+	}
+
 	lsblk := exec.Command("lsblk", "--json", "--fs", "-b", "-o", "NAME,FSTYPE,LABEL,UUID,MOUNTPOINT,SIZE")
 	output, err := lsblk.Output()
 	if err != nil {
@@ -111,43 +124,51 @@ func BlockDevices() ([]*BlockDevice, error) {
 	var lsblkOutputStruct *lsblkOutput
 	err = json.Unmarshal(output, &lsblkOutputStruct)
 	if err != nil {
-		return nil, err
+		return nil, errors.New(fmt.Sprintf("json unmarshal err: %s, %s", err.Error(), string(output)))
 	}
 
 	return lsblkOutputStruct.BlockDevices, nil
 }
 
-func FormatDeviceToExt4(dev *BlockDevice, label string, uuid string, timeout time.Duration) error {
+func FormatDeviceToExt4(dev *BlockDevice, label string, uuid string, timeout time.Duration) (string, error) {
 	mkfsExt4 := exec.Command("mkfs.ext4", fmt.Sprintf("/dev/%s", dev.Name), "-L", label, "-U", uuid)
-	err := mkfsExt4.Start()
-	if err != nil {
-		return err
-	}
+	stdoutReader, stdout, _ := os.Pipe()
+	mkfsExt4.Stdout = stdout
 
-	mkfsExt4StdOut, err := mkfsExt4.StdoutPipe()
+	stderrReader, stderr, _ := os.Pipe()
+	mkfsExt4.Stderr = stderr
+	cmdReader := io.MultiReader(stdoutReader, stderrReader)
 
+	// execute
 	mkfsExt4DoneCh := make(chan error)
-
 	go func() {
-		mkfsExt4DoneCh <- mkfsExt4.Wait()
+		defer stdout.Close()
+		defer stderr.Close()
+		mkfsExt4DoneCh <- mkfsExt4.Run()
 	}()
 
 	select {
 	case <-time.After(timeout):
 		processKillError := mkfsExt4.Process.Kill()
-		mkfsExt4StdOutput, mkfsExt4StdOutputError := ioutil.ReadAll(mkfsExt4StdOut)
-		return errors.New(
-			fmt.Sprintf("timeout, stdOut: %s, stdOut error: %s, process kill error: %s",
-				string(mkfsExt4StdOutput),
-				mkfsExt4StdOutputError,
-				processKillError.Error(),
+		mkfsExt4Output, mkfsExt4OutputError := ioutil.ReadAll(cmdReader)
+		return string(mkfsExt4Output), errors.New(
+			fmt.Sprintf("timeout, stdout: %s, output error: %v, process kill error: %v",
+				string(mkfsExt4Output),
+				mkfsExt4OutputError,
+				processKillError,
 			),
 		)
-	case err = <-mkfsExt4DoneCh:
-		if err != nil {
-			return err
+	case err := <-mkfsExt4DoneCh:
+		// return output and result error
+		mkfsExt4Output, mkfsExt4OutputError := ioutil.ReadAll(cmdReader)
+		output := ""
+		if mkfsExt4OutputError != nil {
+			output = mkfsExt4OutputError.Error()
+		} else {
+			output = string(mkfsExt4Output)
 		}
+		return output, err
 	}
 
-	return nil
+	return "", nil
 }

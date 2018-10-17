@@ -6,6 +6,7 @@ import (
 	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/vcd"
 	"github.com/ty2/vcdfv/vmdiskop"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -151,6 +152,7 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 
 	// fail to mount
 	if mountedBlockDevice == nil {
+		err := errors.New("cannot found new device")
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
@@ -161,14 +163,19 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 			return (&StatusFailure{Error: err}).Exec()
 		}
 
-		// get disk uuid
+		// get disk UUID
 		diskIdArr := strings.Split(diskForMount.Id, ":")
 		uuid := diskIdArr[len(diskIdArr)-1]
 
+		// check whether UUID is valid
+		if !regexp.MustCompile("^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-4[a-fA-F0-9]{3}-[8|9|aA|bB][a-fA-F0-9]{3}-[a-fA-F0-9]{12}$").MatchString(uuid) {
+			return (&StatusFailure{Error: errors.New("format device to ext4 UUID is invalid: " + diskForMount.Id)}).Exec()
+		}
+
 		// format disk
-		err := vmdiskop.FormatDeviceToExt4(mountedBlockDevice, operationMount.Options.PvOrVolumeName, uuid, time.Minute)
+		output, err := vmdiskop.FormatDeviceToExt4(mountedBlockDevice, diskForMount.Name, uuid, time.Minute)
 		if err != nil {
-			return (&StatusFailure{Error: errors.New("format device to ext4: " + err.Error())}).Exec()
+			return (&StatusFailure{Error: errors.New(fmt.Sprintf("format device to ext4: %s, %s", err.Error(), output))}).Exec()
 		}
 	}
 
