@@ -69,7 +69,7 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 			}
 
 			if vm.Name == foundDisk.AttachedVm.Name {
-				// TODO Detach disk in VM
+				// TODO Detach disk in VM by HCTL
 			}
 
 			err = vdc.DetachDisk(vm, foundDisk)
