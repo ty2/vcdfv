@@ -125,7 +125,6 @@ func (operationMount *Mount) Exec() (*ExecResult, error) {
 		return (&StatusFailure{Error: errors.New("attach disk: " + err.Error())}).Exec()
 	}
 
-	time.Sleep(time.Second * 3)
 	blockDevices, err := vmdiskop.BlockDevices()
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("list block devices: " + err.Error())}).Exec()
