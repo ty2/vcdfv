@@ -2,71 +2,97 @@ package operation
 
 import (
 	"errors"
+	"fmt"
 	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/vcd"
 	"github.com/ty2/vcdfv/vmdiskop"
+	"strings"
 )
 
 type Unmount struct {
-	MountDir  string
-	VcdConfig *config.Vcdfv
+	MountDir    string
+	VcdfvConfig *config.Vcdfv
+	vdc         *vcd.Vdc
 }
 
-func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
-	if operationUnmount.MountDir == "" {
+func (unmount *Unmount) Exec() (*ExecResult, error) {
+	var err error
+	// output
+	if unmount.VcdfvConfig.ManualUnmount {
+		return (&StatusSuccess{JsonMessageStruct: struct {
+			DiskId       string `json:"diskId"`
+			DiskName     string `json:"diskName"`
+			VmDeviceName string `json:"vmDeviceName"`
+			MountPoint   string `json:"mountPoint"`
+		}{
+			DiskName:   "<manual-unmount>",
+			MountPoint: unmount.MountDir,
+		}}).Exec()
+	}
+
+	if unmount.MountDir == "" {
 		err := errors.New("mount dir is empty")
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
 	// init vdc
-	vdc, err := vcd.NewVdc(&vcd.VcdConfig{
-		ApiEndpoint: operationUnmount.VcdConfig.VcdApiEndpoint,
-		Insecure:    operationUnmount.VcdConfig.VcdInsecure,
-		User:        operationUnmount.VcdConfig.VcdUser,
-		Password:    operationUnmount.VcdConfig.VcdPassword,
-		Org:         operationUnmount.VcdConfig.VcdOrg,
-		Vdc:         operationUnmount.VcdConfig.VcdVdc,
+	unmount.vdc, err = vcd.NewVdc(&vcd.VcdConfig{
+		ApiEndpoint: unmount.VcdfvConfig.VcdApiEndpoint,
+		Insecure:    unmount.VcdfvConfig.VcdInsecure,
+		User:        unmount.VcdfvConfig.VcdUser,
+		Password:    unmount.VcdfvConfig.VcdPassword,
+		Org:         unmount.VcdfvConfig.VcdOrg,
+		Vdc:         unmount.VcdfvConfig.VcdVdc,
 	})
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("new vdc: " + err.Error())}).Exec()
 	}
 
 	// find this VM is VDC
-	vm, err := FindVm(vdc, operationUnmount.VcdConfig.VcdVdcVApp)
+	vm, err := FindVm(unmount.vdc, unmount.VcdfvConfig.VcdVdcVApp)
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("find VM: " + err.Error())}).Exec()
 	}
 
-	blockDevice, err := vmdiskop.FindDeviceByMountPoint(operationUnmount.MountDir)
-	if err != nil {
-		return (&StatusFailure{Error: errors.New("find device by mount point: " + err.Error())}).Exec()
-	}
-
+	// find block device
 	var diskForUnmount *vcd.VdcDisk
-	// Find exists disk
-	foundDisk, err := vdc.FindDiskByDiskName(blockDevice.Label)
+	blockDeviceForUnmount, err := vmdiskop.FindDeviceByMountPoint(unmount.MountDir)
 	if err != nil {
-		return (&StatusFailure{Error: errors.New("Find disk by disk name: " + err.Error())}).Exec()
+		mountPointErr := err
+		// block device not found or error, then use disk meta data and mount dir pv name for find device
+		blockDeviceForUnmount, diskForUnmount, err = unmount.findAttachedDiskAndBlockDeviceByMountDirAndVm(vm)
+		if err != nil {
+			return (&StatusFailure{Error: errors.New(fmt.Sprintf("find attach disk and block device by mount dir and vm: %s,%s", err.Error(), mountPointErr.Error()))}).Exec()
+		}
 	} else {
-		diskForUnmount = foundDisk
+		diskForUnmount, err = unmount.findAttachedDiskByBlockDeviceInfo(blockDeviceForUnmount)
+		if err != nil {
+			return (&StatusFailure{Error: errors.New("find attached disk by block device info: " + err.Error())}).Exec()
+		}
 	}
 
-	// unmount
-	err = vmdiskop.Unmount(operationUnmount.MountDir)
-	if err != nil {
-		return (&StatusFailure{Error: errors.New("unmount: " + err.Error())}).Exec()
-	}
+	// unmount (ignore error because if disk is unmounted, it will return error)
+	vmdiskop.Unmount(unmount.MountDir)
 
 	// remove scsi device
-	err = vmdiskop.RemoveSCSIDevice(blockDevice)
+	err = vmdiskop.RemoveSCSIDevice(blockDeviceForUnmount)
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("remove SCSI device: " + err.Error())}).Exec()
 	}
 
 	// detach disk in vdc
-	err = vdc.DetachDisk(vm, diskForUnmount)
+	err = unmount.vdc.DetachDisk(vm, diskForUnmount)
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("detach disk: " + err.Error())}).Exec()
+	}
+
+	// reset disk meta
+	diskForUnmount, err = unmount.vdc.SetDiskMeta(diskForUnmount, &vcd.VdcDiskMeta{
+		VmName:     "",
+		DeviceName: "",
+	})
+	if err != nil {
+		return (&StatusFailure{Error: errors.New("set disk meta: " + err.Error())}).Exec()
 	}
 
 	// output
@@ -76,9 +102,54 @@ func (operationUnmount *Unmount) Exec() (*ExecResult, error) {
 		VmDeviceName string `json:"vmDeviceName"`
 		MountPoint   string `json:"mountPoint"`
 	}{
-		DiskId:       foundDisk.Id,
-		DiskName:     foundDisk.Name,
-		VmDeviceName: blockDevice.Name,
-		MountPoint:   blockDevice.MountPoint,
+		DiskId:       diskForUnmount.Id,
+		DiskName:     diskForUnmount.Name,
+		VmDeviceName: blockDeviceForUnmount.Name,
+		MountPoint:   blockDeviceForUnmount.MountPoint,
 	}}).Exec()
+}
+
+func (unmount *Unmount) findAttachedDiskAndBlockDeviceByMountDirAndVm(vm *vcd.VAppVm) (*vmdiskop.BlockDevice, *vcd.VdcDisk, error) {
+
+	mountDirArr := strings.Split(unmount.MountDir, "/")
+
+	// the last segment of mount dir path is pv or volume name and assume pv or volume name is disk name
+	diskName := mountDirArr[len(mountDirArr)-1]
+
+	// find attached disk
+	foundDisk, err := unmount.vdc.FindDiskByDiskName(diskName)
+	if err != nil {
+		return nil, nil, errors.New("find device by mount point, find disk by disk name error: " + err.Error())
+	}
+
+	// disk is not attached to this VM
+	if foundDisk.AttachedVm != nil && foundDisk.AttachedVm.Name != vm.Name {
+		return nil, nil, errors.New(fmt.Sprintf("find device by mount point, disk is not attached to this vm, expect: %s, got: %s: ", foundDisk.AttachedVm.Name, vm.Name))
+	} else {
+		return nil, nil, errors.New("disk is not attached to any VM")
+	}
+
+	// get meta data
+	meta, err := unmount.vdc.DiskMeta(foundDisk)
+	if err != nil {
+		return nil, nil, errors.New("find device by mount point, get disk meta error: " + err.Error())
+	}
+
+	// find and set block device
+	blockDevice, err := vmdiskop.FindDeviceByDeviceName(meta.DeviceName)
+	if err != nil {
+		return nil, nil, errors.New(fmt.Sprintf("find device by mount point, find device by device name error: %s", err.Error()))
+	}
+
+	return blockDevice, foundDisk, nil
+}
+
+func (unmount *Unmount) findAttachedDiskByBlockDeviceInfo(blockDeviceInfo *vmdiskop.BlockDevice) (*vcd.VdcDisk, error) {
+	// find exists disk
+	foundDisk, err := unmount.vdc.FindDiskByDiskName(blockDeviceInfo.Label)
+	if err != nil {
+		return nil, errors.New("find disk by disk name: " + err.Error())
+	}
+
+	return foundDisk, nil
 }

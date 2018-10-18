@@ -28,6 +28,27 @@ type BlockDevice struct {
 	Size       string         `json:"size"`
 }
 
+func FindDeviceByDeviceName(deviceName string) (*BlockDevice, error) {
+	blockDevices, err := BlockDevices()
+	if err != nil {
+		return nil, err
+	}
+
+	var foundedBlockDevice *BlockDevice
+	for _, blockDevice := range blockDevices {
+		if blockDevice.Name == deviceName {
+			foundedBlockDevice = blockDevice
+			break
+		}
+	}
+
+	if foundedBlockDevice == nil {
+		return nil, errors.New("not found")
+	}
+
+	return foundedBlockDevice, nil
+}
+
 func FindDeviceByMountPoint(mountPoint string) (*BlockDevice, error) {
 	blockDevices, err := BlockDevices()
 	if err != nil {

@@ -5,3 +5,4 @@ vcdPassword: ""
 vcdOrg: ""
 vcdVdc: ""
 vcdVdcVApp: ""
+manualUnmount: false

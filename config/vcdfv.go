@@ -8,4 +8,5 @@ type Vcdfv struct {
 	VcdOrg         string `yaml:"vcdOrg"`
 	VcdVdc         string `yaml:"vcdVdc"`
 	VcdVdcVApp     string `yaml:"vcdVdcVApp"`
+	ManualUnmount  bool   `yaml:"manualUnmount"`
 }

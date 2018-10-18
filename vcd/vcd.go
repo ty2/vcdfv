@@ -3,11 +3,13 @@
 package vcd
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/vmware/go-vcloud-director/govcd"
 	"github.com/vmware/go-vcloud-director/types/v56"
 	"net/url"
+	"time"
 )
 
 type VcdConfig struct {
@@ -37,7 +39,15 @@ type VdcDisk struct {
 	Href        string
 	Size        int
 	Description string
+	Meta        *VdcDiskMeta
 	AttachedVm  *DiskAttachedVm
+}
+
+type VdcDiskMeta struct {
+	VmName     string    `json:"vmName"`
+	DeviceName string    `json:"deviceName"`
+	CreatedAt  time.Time `json:"createdAt"`
+	UpdatedAt  time.Time `json:"updatedAt"`
 }
 
 type DiskAttachedVm struct {
@@ -159,11 +169,17 @@ func (vdc *Vdc) FindDiskByDiskName(diskName string) (*VdcDisk, error) {
 				}
 
 				vdcDisk = &VdcDisk{
-					Id:         disk.Disk.Id,
-					Name:       disk.Disk.Name,
-					Size:       disk.Disk.Size,
-					Href:       disk.Disk.HREF,
-					AttachedVm: diskAttachedVm,
+					Id:          disk.Disk.Id,
+					Name:        disk.Disk.Name,
+					Size:        disk.Disk.Size,
+					Description: disk.Disk.Description,
+					Href:        disk.Disk.HREF,
+					AttachedVm:  diskAttachedVm,
+				}
+
+				diskMeta, err := vdc.DiskMeta(vdcDisk)
+				if err == nil {
+					vdcDisk.Meta = diskMeta
 				}
 			}
 		}
@@ -172,6 +188,7 @@ func (vdc *Vdc) FindDiskByDiskName(diskName string) (*VdcDisk, error) {
 	if vdcDisk == nil {
 		return nil, errors.New("not found")
 	}
+
 	return vdcDisk, nil
 }
 
@@ -197,27 +214,55 @@ func (vdc *Vdc) CreateDisk(disk *VdcDisk) (*VdcDisk, error) {
 	return disk, nil
 }
 
-func (vdc *Vdc) DeleteDisk(disk *VdcDisk) error {
-	if err := VerifyHref(disk.Href); err != nil {
-		return err
+// Use independent disk's description as meta field
+func (vdc *Vdc) DiskMeta(disk *VdcDisk) (*VdcDiskMeta, error) {
+	var diskMeta *VdcDiskMeta
+
+	err := json.Unmarshal([]byte(disk.Description), &diskMeta)
+	if err != nil {
+		return nil, err
 	}
 
+	return diskMeta, err
+}
+
+// Use independent disk's description as meta field
+func (vdc *Vdc) SetDiskMeta(disk *VdcDisk, newDiskMeta *VdcDiskMeta) (*VdcDisk, error) {
 	vcdDisk, err := vdc.client.FindDiskByHREF(disk.Href)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	task, err := vcdDisk.Delete()
+	// set date
+	meta, err := vdc.DiskMeta(disk)
+	if err == nil {
+		// diskMeta is not set or unmarshal error
+		newDiskMeta.CreatedAt = meta.UpdatedAt
+		newDiskMeta.UpdatedAt = time.Now()
+	} else {
+		now := time.Now()
+		newDiskMeta.CreatedAt = now
+		newDiskMeta.UpdatedAt = now
+	}
+
+	b, err := json.Marshal(newDiskMeta)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	vcdDisk.Disk.Description = string(b)
+
+	task, err := vcdDisk.Update(vcdDisk.Disk)
+	if err != nil {
+		return nil, err
 	}
 
 	err = task.WaitTaskCompletion()
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	// return refreshed disk info
+	return vdc.FindDiskByDiskName(vcdDisk.Disk.Name)
 }
 
 func (vdc *Vdc) DiskOp(disk *VdcDisk, opFn DiskOpFn) error {

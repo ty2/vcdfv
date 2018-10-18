@@ -172,9 +172,9 @@ func argsToMountOperation(args []string) operation.Operation {
 	}
 
 	return &operation.Mount{
-		MountDir:  args[2],
-		Options:   option,
-		VcdConfig: vcdfvConfig,
+		MountDir:    args[2],
+		Options:     option,
+		VcdfvConfig: vcdfvConfig,
 	}
 }
 
@@ -187,7 +187,7 @@ func argsToUnMountOperation(args []string) operation.Operation {
 	}
 
 	return &operation.Unmount{
-		MountDir:  args[2],
-		VcdConfig: vcdfvConfig,
+		MountDir:    args[2],
+		VcdfvConfig: vcdfvConfig,
 	}
 }
