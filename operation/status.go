@@ -12,6 +12,9 @@ type StatusFailure struct {
 
 func (operationStatusFailure *StatusFailure) Exec() (*ExecResult, error) {
 	var outputMessage string
+
+	// use output as OutputError as first priority
+	// use output as Error as second priority
 	if operationStatusFailure.OutputError != nil {
 		outputMessage = operationStatusFailure.OutputError.Error()
 	} else if operationStatusFailure.Error != nil {
@@ -22,6 +25,7 @@ func (operationStatusFailure *StatusFailure) Exec() (*ExecResult, error) {
 		})
 
 		if err != nil {
+			// json unmarshal error, use DIY output
 			outputMessage = fmt.Sprintf(`{"error": "%s"}`, err.Error())
 		}
 

@@ -27,6 +27,6 @@ type Options struct {
 	Readwrite      string `json:"kubernetes.io/readwrite"`
 	FsGroup        string `json:"kubernetes.io/fsGroup"`
 	PvOrVolumeName string `json:"kubernetes.io/pvOrVolumeName"`
-	// Addition Options
+	// additional options
 	DiskInitialSize string `json:"diskInitialSize"`
 }

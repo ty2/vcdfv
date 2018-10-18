@@ -3,13 +3,25 @@ package operation
 import (
 	"errors"
 	"fmt"
+	"github.com/ty2/vcdfv/config"
 	"github.com/ty2/vcdfv/vcd"
 	"os"
 	"strconv"
 )
 
+func VdcClient(vcdfvConfig *config.Vcdfv) (*vcd.Vdc, error) {
+	return vcd.NewVdc(&vcd.VcdConfig{
+		ApiEndpoint: vcdfvConfig.VcdApiEndpoint,
+		Insecure:    vcdfvConfig.VcdInsecure,
+		User:        vcdfvConfig.VcdUser,
+		Password:    vcdfvConfig.VcdPassword,
+		Org:         vcdfvConfig.VcdOrg,
+		Vdc:         vcdfvConfig.VcdVdc,
+	})
+}
+
 func SizeStringToByteUnit(str string) (int, error) {
-	// no unit so it is byte then return byte
+	// no unit in the string so it is byte then return byte size
 	if size, err := strconv.ParseInt(str, 10, 0); err == nil {
 		return int(size), nil
 	}

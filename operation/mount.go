@@ -37,16 +37,9 @@ func (mount *Mount) Exec() (*ExecResult, error) {
 	}
 
 	// init VDC
-	mount.vdc, err = vcd.NewVdc(&vcd.VcdConfig{
-		ApiEndpoint: mount.VcdfvConfig.VcdApiEndpoint,
-		Insecure:    mount.VcdfvConfig.VcdInsecure,
-		User:        mount.VcdfvConfig.VcdUser,
-		Password:    mount.VcdfvConfig.VcdPassword,
-		Org:         mount.VcdfvConfig.VcdOrg,
-		Vdc:         mount.VcdfvConfig.VcdVdc,
-	})
+	mount.vdc, err = VdcClient(mount.VcdfvConfig)
 	if err != nil {
-		return (&StatusFailure{Error: errors.New("new vdc: " + err.Error())}).Exec()
+		return (&StatusFailure{Error: errors.New("vdc client: " + err.Error())}).Exec()
 	}
 
 	// find this VM in VDC
@@ -175,16 +168,17 @@ func (mount *Mount) findMountedDevice(beforeMountedBlockDevices []*vmdiskop.Bloc
 }
 
 func (mount *Mount) createDisk() (*vcd.VdcDisk, error) {
+	// Convert DiskInitialSize string to byte size
 	size, err := SizeStringToByteUnit(mount.Options.DiskInitialSize)
 	if err != nil {
 		return nil, errors.New("size string to byte unit: " + err.Error())
 	}
 
+	// create disk
 	disk, err := mount.vdc.CreateDisk(&vcd.VdcDisk{
 		Name: mount.Options.PvOrVolumeName,
 		Size: size,
 	})
-
 	if err != nil {
 		return nil, errors.New("create disk: " + err.Error())
 	}
@@ -277,6 +271,7 @@ func (mount *Mount) setDiskMeta(disk *vcd.VdcDisk, blockDevice *vmdiskop.BlockDe
 }
 
 func (mount *Mount) detachDisk(disk *vcd.VdcDisk, vm *vcd.VAppVm) error {
+	// if disk is attached to this VM
 	if vm.Name == disk.AttachedVm.Name {
 		// TODO Detach disk in VM by HCTL
 		if disk.Meta != nil {
@@ -286,6 +281,7 @@ func (mount *Mount) detachDisk(disk *vcd.VdcDisk, vm *vcd.VAppVm) error {
 		}
 	}
 
+	// detach disk
 	err := mount.vdc.DetachDisk(vm, disk)
 	if err != nil {
 		return errors.New(fmt.Sprintf("disk is attached to VM %s and cannot detach disk %s from the VM", disk.AttachedVm.Name, disk.Name))

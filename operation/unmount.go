@@ -17,7 +17,8 @@ type Unmount struct {
 
 func (unmount *Unmount) Exec() (*ExecResult, error) {
 	var err error
-	// output
+
+	// when manualUnmount is true, ignore unmount process and return success
 	if unmount.VcdfvConfig.ManualUnmount {
 		return (&StatusSuccess{JsonMessageStruct: struct {
 			DiskId       string `json:"diskId"`
@@ -36,16 +37,9 @@ func (unmount *Unmount) Exec() (*ExecResult, error) {
 	}
 
 	// init vdc
-	unmount.vdc, err = vcd.NewVdc(&vcd.VcdConfig{
-		ApiEndpoint: unmount.VcdfvConfig.VcdApiEndpoint,
-		Insecure:    unmount.VcdfvConfig.VcdInsecure,
-		User:        unmount.VcdfvConfig.VcdUser,
-		Password:    unmount.VcdfvConfig.VcdPassword,
-		Org:         unmount.VcdfvConfig.VcdOrg,
-		Vdc:         unmount.VcdfvConfig.VcdVdc,
-	})
+	unmount.vdc, err = VdcClient(unmount.VcdfvConfig)
 	if err != nil {
-		return (&StatusFailure{Error: errors.New("new vdc: " + err.Error())}).Exec()
+		return (&StatusFailure{Error: errors.New("vdc client: " + err.Error())}).Exec()
 	}
 
 	// find this VM is VDC
@@ -110,7 +104,7 @@ func (unmount *Unmount) Exec() (*ExecResult, error) {
 }
 
 func (unmount *Unmount) findAttachedDiskAndBlockDeviceByMountDirAndVm(vm *vcd.VAppVm) (*vmdiskop.BlockDevice, *vcd.VdcDisk, error) {
-
+	// split mount dir for getting path segment
 	mountDirArr := strings.Split(unmount.MountDir, "/")
 
 	// the last segment of mount dir path is pv or volume name and assume pv or volume name is disk name
