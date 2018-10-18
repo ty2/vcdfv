@@ -65,7 +65,7 @@ func (unmount *Unmount) Exec() (*ExecResult, error) {
 		}
 	}
 
-	// unmount (ignore error because if disk is unmounted, it will return error)
+	// unmount (ignore error because if disk was unmounted, it will return error)
 	vmdiskop.Unmount(unmount.MountDir)
 
 	// remove scsi device
