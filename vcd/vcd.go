@@ -63,32 +63,31 @@ type Vdc struct {
 type DiskOpFn func(*govcd.Disk) (govcd.Task, error)
 
 func NewVdc(config *VcdConfig) (*Vdc, error) {
-
-	// Init VCD
+	// init VCD
 	vdc := &Vdc{}
 
-	// Login to VCD
+	// login to VCD
 	client, err := vdc.connect(config)
 	if err != nil {
 		return nil, err
 	}
 
-	// Assign VCD client
+	// assign VCD client
 	vdc.vcdClient = client
 
-	// Get VDC info
+	// get VDC info
 	org, err := govcd.GetOrgByName(client, config.Org)
 	if err != nil {
 		return nil, err
 	}
 
-	// Get VDC client
+	// get VDC client
 	vdcClient, err := org.GetVdcByName(config.Vdc)
 	if err != nil {
 		return nil, err
 	}
 
-	// Assign VDC client
+	// assign VDC client
 	vdc.client = &vdcClient
 
 	return vdc, nil

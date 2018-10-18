@@ -49,13 +49,15 @@ func (mount *Mount) Exec() (*ExecResult, error) {
 	}
 
 	var diskForMount *vcd.VdcDisk
-	// Find exists disk
+	// find exists disk
 	foundDisk, err := mount.vdc.FindDiskByDiskName(mount.Options.PvOrVolumeName)
 	if err != nil {
+		// error other than disk is not created
 		if err.Error() != "not found" {
 			return (&StatusFailure{Error: errors.New("find disk by disk name foundDisk: " + err.Error())}).Exec()
 		}
 	} else if foundDisk != nil {
+		// if disk is attached to VM
 		if foundDisk.AttachedVm != nil {
 			// detach disk
 			if err := mount.detachDisk(foundDisk, vm); err != nil {
@@ -80,10 +82,12 @@ func (mount *Mount) Exec() (*ExecResult, error) {
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("before block devices: " + err.Error())}).Exec()
 	}
-	// check disk is mounted
+
+	// check disk is attached
 	for _, blockDevice := range beforeMountBlockDevices {
+		// assume the disk not attached to the VM
 		if blockDevice.Label == mount.Options.PvOrVolumeName {
-			err := errors.New("already mount")
+			err := errors.New("disk is already attached")
 			return (&StatusFailure{Error: err}).Exec()
 		}
 	}
