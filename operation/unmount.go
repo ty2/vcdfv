@@ -52,16 +52,16 @@ func (unmount *Unmount) Exec() (*ExecResult, error) {
 	var diskForUnmount *vcd.VdcDisk
 	blockDeviceForUnmount, err := vmdiskop.FindDeviceByMountPoint(unmount.MountDir)
 	if err != nil {
+		diskForUnmount, err = unmount.findAttachedDiskByBlockDeviceInfo(blockDeviceForUnmount)
+		if err != nil {
+			return (&StatusFailure{Error: errors.New("find attached disk by block device info: " + err.Error())}).Exec()
+		}
+	} else {
 		mountPointErr := err
 		// block device not found or error, then use disk meta data and mount dir pv name for find device
 		blockDeviceForUnmount, diskForUnmount, err = unmount.findAttachedDiskAndBlockDeviceByMountDirAndVm(vm)
 		if err != nil {
 			return (&StatusFailure{Error: errors.New(fmt.Sprintf("find attach disk and block device by mount dir and vm: %s,%s", err.Error(), mountPointErr.Error()))}).Exec()
-		}
-	} else {
-		diskForUnmount, err = unmount.findAttachedDiskByBlockDeviceInfo(blockDeviceForUnmount)
-		if err != nil {
-			return (&StatusFailure{Error: errors.New("find attached disk by block device info: " + err.Error())}).Exec()
 		}
 	}
 
