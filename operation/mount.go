@@ -36,6 +36,13 @@ func (mount *Mount) Exec() (*ExecResult, error) {
 		return (&StatusFailure{Error: err}).Exec()
 	}
 
+	// Ext4 label limit
+	// The maximum length of the volume label is 16 bytes.
+	if len(mount.Options.PvOrVolumeName) > 16 {
+		err = errors.New("pv or volume name len must not > 16")
+		return (&StatusFailure{Error: err}).Exec()
+	}
+
 	// init VDC
 	mount.vdc, err = VdcClient(mount.VcdfvConfig)
 	if err != nil {
