@@ -179,7 +179,7 @@ func (mount *Mount) findMountedDevice(beforeMountedBlockDevices []*vmdiskop.Bloc
 }
 
 func (mount *Mount) createDisk() (*vcd.VdcDisk, error) {
-	// Convert DiskInitialSize string to byte size
+	// convert DiskInitialSize string to byte size
 	size, err := SizeStringToByteUnit(mount.Options.DiskInitialSize)
 	if err != nil {
 		return nil, errors.New("size string to byte unit: " + err.Error())
@@ -232,6 +232,13 @@ func (mount *Mount) setDiskMeta(disk *vcd.VdcDisk, blockDevice *vmdiskop.BlockDe
 	// 2. update disk info
 	// 3. attach disk back
 	// 4. refresh blk list
+
+	// speed up process.
+	// if old meta is same as new meta, no need update and exit
+	if disk.Meta != nil && disk.Meta.VmName == vm.Name && disk.Meta.DeviceName == blockDevice.Name {
+		return nil
+	}
+
 	err := mount.vdc.DetachDisk(vm, disk)
 	if err != nil {
 		return errors.New(fmt.Sprintf("detach disk: %s", err.Error()))

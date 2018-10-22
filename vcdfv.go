@@ -44,7 +44,7 @@ func init() {
 func main() {
 	lock, err := lockfile.New(filepath.Join(os.TempDir(), "lock.vcdfv.lck"))
 	if err != nil {
-		// Cannot init lock
+		// cannot init lock
 		result, err := (&operation.StatusFailure{
 			Error: err,
 		}).Exec()
@@ -53,12 +53,14 @@ func main() {
 		return
 	}
 
-	err = lockProcess(lock, 12)
+	err = lockProcess(lock)
 	if err != nil {
-		result, err := (&operation.StatusFailure{
-			Error: err,
-		}).Exec()
+		// try to prevent long delay process timer in kubernetes, so it need to reduce fail times
+		time.Sleep(time.Second * 30)
 
+		result, err := (&operation.StatusFailure{
+			Error: errors.New("waiting other process finish attach/detach disk"),
+		}).Exec()
 		printResult(result, err)
 		return
 	}
@@ -74,15 +76,11 @@ func main() {
 	return
 }
 
-func lockProcess(lock lockfile.Lockfile, maxRetry int) error {
+func lockProcess(lock lockfile.Lockfile) error {
 	err := lock.TryLock()
-	// Error handling is essential, as we only try to get the lock.
+	// error handling is essential, as we only try to get the lock.
 	if err != nil {
-		if maxRetry > 0 {
-			time.Sleep(5 * time.Second)
-			maxRetry--
-			return lockProcess(lock, maxRetry)
-		}
+		return err
 	}
 
 	return nil

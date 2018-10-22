@@ -48,7 +48,7 @@ func main() {
 		panic(err)
 	}
 
-	disk, err := vdc.FindDiskByDiskName("kci-wordpress-mysql")
+	disk, err := vdc.FindDiskByDiskName("kci-wp")
 	if err != nil {
 		panic(err)
 	}

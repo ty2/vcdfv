@@ -121,7 +121,7 @@ func BlockDevices() ([]*BlockDevice, error) {
 	// synchronize with udev.
 	// http://man7.org/linux/man-pages/man8/lsblk.8.html
 	udevadm := exec.Command("udevadm", "settle")
-	err = udevadm.Run()
+	_, err = udevadm.Output()
 	if err != nil {
 		return nil, err
 	}
