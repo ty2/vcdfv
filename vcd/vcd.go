@@ -60,7 +60,7 @@ type Vdc struct {
 	client    *govcd.Vdc
 }
 
-type DiskOpFn func(*govcd.Disk) (govcd.Task, error)
+type DiskOpFn func(params *types.DiskAttachOrDetachParams) (govcd.Task, error)
 
 func NewVdc(config *VcdConfig) (*Vdc, error) {
 	// init VCD
@@ -192,16 +192,18 @@ func (vdc *Vdc) FindDiskByDiskName(diskName string) (*VdcDisk, error) {
 }
 
 func (vdc *Vdc) CreateDisk(disk *VdcDisk) (*VdcDisk, error) {
-	vdcDisk, err := vdc.client.CreateDisk(&types.DiskCreateParamsDisk{
-		Name:        disk.Name,
-		Size:        disk.Size,
-		Description: disk.Description,
+	vdcDisk, err := vdc.client.CreateDisk(&types.DiskCreateParams{
+		Disk: &types.Disk{
+			Name:        disk.Name,
+			Size:        disk.Size,
+			Description: disk.Description,
+		},
 	})
 
 	disk.Href = vdcDisk.Disk.HREF
 
 	task := govcd.NewTask(&vdc.vcdClient.Client)
-	for _, taskItem := range vdcDisk.Disk.Tasks {
+	for _, taskItem := range vdcDisk.Disk.Tasks.Task {
 		task.Task = taskItem
 		err = task.WaitTaskCompletion()
 	}
@@ -264,21 +266,29 @@ func (vdc *Vdc) SetDiskMeta(disk *VdcDisk, newDiskMeta *VdcDiskMeta) (*VdcDisk, 
 	return vdc.FindDiskByDiskName(vcdDisk.Disk.Name)
 }
 
-func (vdc *Vdc) DiskOp(disk *VdcDisk, opFn DiskOpFn) error {
+func (vdc *Vdc) DiskOp(disk *VdcDisk, busNumber int, unitNumber int, opFn DiskOpFn) error {
 	if err := VerifyHref(disk.Href); err != nil {
 		return err
 	}
 
-	vdcDisk, err := vdc.client.FindDiskByHREF(disk.Href)
+	diskAttachOrDetachParams := &types.DiskAttachOrDetachParams{
+		Disk: &types.Reference{
+			HREF: disk.Href,
+		},
+	}
+
+	// set busNumber and unitNumber
+	if busNumber >= 0 {
+		diskAttachOrDetachParams.BusNumber = &busNumber
+		if unitNumber >= 0 {
+			diskAttachOrDetachParams.UnitNumber = &unitNumber
+		}
+	}
+
+	task, err := opFn(diskAttachOrDetachParams)
 	if err != nil {
 		return err
 	}
-
-	task, err := opFn(vdcDisk)
-	if err != nil {
-		return err
-	}
-
 	err = task.WaitTaskCompletion()
 	if err != nil {
 		return err
@@ -287,7 +297,7 @@ func (vdc *Vdc) DiskOp(disk *VdcDisk, opFn DiskOpFn) error {
 	return nil
 }
 
-func (vdc *Vdc) AttachDisk(vm *VAppVm, disk *VdcDisk) error {
+func (vdc *Vdc) AttachDisk(vm *VAppVm, disk *VdcDisk, busNumber int, unitNumber int) error {
 	if err := VerifyHref(vm.Href); err != nil {
 		return err
 	}
@@ -297,7 +307,7 @@ func (vdc *Vdc) AttachDisk(vm *VAppVm, disk *VdcDisk) error {
 		return err
 	}
 
-	err = vdc.DiskOp(disk, vdcVM.AttachDisk)
+	err = vdc.DiskOp(disk, busNumber, unitNumber, vdcVM.AttachDisk)
 	if err != nil {
 		return err
 	}
@@ -315,7 +325,7 @@ func (vdc *Vdc) DetachDisk(vm *VAppVm, disk *VdcDisk) error {
 		return err
 	}
 
-	err = vdc.DiskOp(disk, vdcVM.DetachDisk)
+	err = vdc.DiskOp(disk, -1, -1, vdcVM.DetachDisk)
 	if err != nil {
 		return err
 	}

@@ -100,7 +100,7 @@ func (mount *Mount) Exec() (*ExecResult, error) {
 	}
 
 	// attach disk
-	err = mount.vdc.AttachDisk(vm, diskForMount)
+	err = mount.vdc.AttachDisk(vm, diskForMount, -1, -1)
 	if err != nil {
 		return (&StatusFailure{Error: errors.New("attach disk: " + err.Error())}).Exec()
 	}
@@ -262,7 +262,7 @@ func (mount *Mount) setDiskMeta(disk *vcd.VdcDisk, blockDevice *vmdiskop.BlockDe
 		return errors.New(fmt.Sprintf("list block devices: %s", err.Error()))
 	}
 
-	err = mount.vdc.AttachDisk(vm, disk)
+	err = mount.vdc.AttachDisk(vm, disk, -1, -1)
 	if err != nil {
 		return errors.New(fmt.Sprintf("attach disk: %s", err.Error()))
 	}

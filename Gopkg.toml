@@ -31,7 +31,7 @@
 
 [[override]]
   name = "github.com/vmware/go-vcloud-director"
-  revision = "be956699918497cfde7af773ccc14e5cec0bf268"
+  revision = "e4c8fcfb8b779d4207185413717b8e1f2663e7ba"
   source = "github.com/ty2/go-vcloud-director"
 
 [[constraint]]
